@@ -25,6 +25,11 @@ if (!configXoTypescript[4]) {
 	throw new Error('Invalid eslint-config-xo-typescript');
 }
 
+const baseLanguageOptions = configXoTypescript[0]?.languageOptions as Linter.LanguageOptions | undefined;
+const baseParserOptions = baseLanguageOptions?.parserOptions ?? {};
+const typescriptLanguageOptions = (configXoTypescript[4]?.languageOptions ?? {}) as Linter.LanguageOptions;
+const typescriptParserOptions = typescriptLanguageOptions.parserOptions ?? {};
+
 /**
 The base config that XO builds on top of from user options.
 */
@@ -53,10 +58,10 @@ export const config: Linter.Config[] = [
 				...globals.es2021,
 				...globals.node,
 			},
-			ecmaVersion: configXoTypescript[0]?.languageOptions?.ecmaVersion,
-			sourceType: configXoTypescript[0]?.languageOptions?.sourceType,
+			ecmaVersion: baseLanguageOptions?.ecmaVersion,
+			sourceType: baseLanguageOptions?.sourceType,
 			parserOptions: {
-				...configXoTypescript[0]?.languageOptions?.parserOptions,
+				...baseParserOptions,
 			},
 		},
 		settings: {
@@ -379,9 +384,9 @@ export const config: Linter.Config[] = [
 		plugins: configXoTypescript[4]?.plugins, // ['@typescript-eslint'],
 		files: [tsFilesGlob],
 		languageOptions: {
-			...configXoTypescript[4]?.languageOptions,
+			...typescriptLanguageOptions,
 			parserOptions: {
-				...configXoTypescript[4]?.languageOptions?.parserOptions,
+				...typescriptParserOptions,
 				// This needs to be explicitly set to `true`
 				projectService: true,
 			},

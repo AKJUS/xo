@@ -10,6 +10,14 @@ import {
 	jsFilesGlob,
 } from './constants.js';
 
+type TypescriptParserOptions = Linter.ParserOptions & {
+	project?: unknown;
+	projectService?: unknown;
+	tsconfigRootDir?: unknown;
+};
+
+const typescriptLanguageOptions = configXoTypescript[1]?.languageOptions as Linter.LanguageOptions | undefined;
+
 /**
 Convert a `xo` config item to an ESLint config item.
 
@@ -71,14 +79,17 @@ This includes ensuring that user-defined properties can override XO defaults, an
 @param xoConfig - The flat XO config to pre-process.
 @returns The pre-processed flat XO config.
 */
-export const preProcessXoConfig = (xoConfig: XoConfigItem[]): // eslint-disable-line complexity
-{config: XoConfigItem[]; tsFilesGlob: string[]; tsFilesIgnoresGlob: string[]} => {
+// eslint-disable-next-line complexity
+export const preProcessXoConfig = (xoConfig: XoConfigItem[]): {config: XoConfigItem[]; tsFilesGlob: string[]; tsFilesIgnoresGlob: string[]} => {
 	const tsFilesGlob: string[] = [];
 	const tsFilesIgnoresGlob: string[] = [];
 
 	const processedConfig: XoConfigItem[] = [];
 
 	for (const [idx, {...config}] of xoConfig.entries()) {
+		const languageOptions = config.languageOptions as Linter.LanguageOptions | undefined;
+		const parserOptions = languageOptions?.parserOptions as TypescriptParserOptions | undefined;
+
 		// We can skip the first config  item, as it is the base config item.
 		if (idx === 0) {
 			processedConfig.push(config);
@@ -89,8 +100,8 @@ export const preProcessXoConfig = (xoConfig: XoConfigItem[]): // eslint-disable-
 		// typescript-eslint rules set to "off" are ignored and not applied to JS files.
 		if (
 			config.rules
-			&& !config.languageOptions?.parser
-			&& !config.languageOptions?.parserOptions?.['project']
+			&& !languageOptions?.parser
+			&& parserOptions?.project === undefined
 			&& !config.plugins?.['@typescript-eslint']
 		) {
 			const hasTsRules = Object.entries(config.rules).some(rulePair => {
@@ -129,7 +140,7 @@ export const preProcessXoConfig = (xoConfig: XoConfigItem[]): // eslint-disable-
 						...config.plugins,
 						...configXoTypescript[1]?.plugins,
 					};
-					config.languageOptions.parser = configXoTypescript[1]?.languageOptions?.parser;
+					(config.languageOptions as Linter.LanguageOptions).parser = typescriptLanguageOptions?.parser;
 					tsFilesGlob.push(...arrify(config.files ?? allFilesGlob));
 					tsFilesIgnoresGlob.push(...arrify(config.ignores));
 				}
@@ -139,9 +150,9 @@ export const preProcessXoConfig = (xoConfig: XoConfigItem[]): // eslint-disable-
 		// If a user sets the `parserOptions.project` or `projectService` or `tsconfigRootDir`, we need to ensure that the tsFilesGlob is set to exclude those files,
 		// as this indicates the user has opted out of the default TypeScript handling for those files.
 		if (
-			config.languageOptions?.parserOptions?.['project'] !== undefined
-			|| config.languageOptions?.parserOptions?.['projectService'] !== undefined
-			|| config.languageOptions?.parserOptions?.['tsconfigRootDir'] !== undefined
+			parserOptions?.project !== undefined
+			|| parserOptions?.projectService !== undefined
+			|| parserOptions?.tsconfigRootDir !== undefined
 		) {
 			// The glob itself should NOT be negated
 			tsFilesIgnoresGlob.push(...arrify(config.files ?? allFilesGlob));
