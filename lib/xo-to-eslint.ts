@@ -112,6 +112,13 @@ export function xoToEslintConfig(flatXoConfig: XoConfigItem[] | undefined, {pret
 				'error',
 				{before: false, after: true},
 			];
+			eslintConfigItem.rules['@stylistic/member-delimiter-style'] = [
+				'error',
+				{
+					multiline: {delimiter: 'none'},
+					singleline: {delimiter: 'comma', requireLast: false},
+				},
+			];
 		}
 
 		if (xoConfigItem.space) {

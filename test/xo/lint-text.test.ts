@@ -81,6 +81,34 @@ test('flat config > ts > semi', async t => {
 	t.is(results?.[0]?.messages?.[0]?.ruleId, '@stylistic/semi');
 });
 
+test('flat config > ts > semicolon false > member-delimiter-style', async t => {
+	const {cwd} = t.context;
+	const filePath = path.join(cwd, 'test.ts');
+	await fs.writeFile(
+		path.join(cwd, 'xo.config.js'),
+		dedent`
+			export default [
+			  {
+			    semicolon: false
+			  }
+			];\n
+		`,
+		'utf8',
+	);
+	const text = dedent`
+		type FooProps = {
+			thing: string
+		}
+
+		export const foo: FooProps = {thing: 'bar'}\n
+	`;
+	await fs.writeFile(filePath, text, 'utf8');
+	const xo = new Xo({cwd});
+	const {results} = await xo.lintText(text, {filePath});
+	const ruleIds = results[0]?.messages?.map(({ruleId}) => ruleId) ?? [];
+	t.false(ruleIds.includes('@stylistic/member-delimiter-style'), 'member-delimiter-style should not report when semicolon is false');
+});
+
 test('flat config > ts > semi > no tsconfig', async t => {
 	const filePath = path.join(t.context.cwd, 'test.ts');
 	await fs.rm(path.join(t.context.cwd, 'tsconfig.json'));

@@ -58,6 +58,13 @@ test('config with semi false option', t => {
 	const flatConfig = xoToEslintConfig([{semicolon: false}]);
 
 	t.deepEqual(flatConfig.at(-1)?.rules?.['@stylistic/semi'], ['error', 'never']);
+	t.deepEqual(flatConfig.at(-1)?.rules?.['@stylistic/member-delimiter-style'], [
+		'error',
+		{
+			multiline: {delimiter: 'none'},
+			singleline: {delimiter: 'comma', requireLast: false},
+		},
+	]);
 });
 
 test('config with rules', t => {
