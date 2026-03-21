@@ -2,7 +2,7 @@ import path from 'node:path';
 import micromatch from 'micromatch';
 import {type Linter} from 'eslint';
 import arrify from 'arrify';
-import configXoTypescript from 'eslint-config-xo-typescript';
+import {typescriptParser} from 'eslint-config-xo';
 import {type XoConfigItem} from './types.js';
 import {
 	allFilesGlob,
@@ -10,7 +10,7 @@ import {
 	jsFilesGlob,
 } from './constants.js';
 
-type LanguageOptionsWithParser = Linter.LanguageOptions & {parser?: Linter.Parser};
+export {typescriptParser}; // eslint-disable-line unicorn/prefer-export-from -- Also used locally
 
 type TypeScriptParserOptions = Linter.ParserOptions & {
 	project?: string | string[];
@@ -18,17 +18,6 @@ type TypeScriptParserOptions = Linter.ParserOptions & {
 	tsconfigRootDir?: string;
 	programs?: unknown[];
 };
-
-const typescriptParserConfig = configXoTypescript.find(config => {
-	const languageOptions = config.languageOptions as LanguageOptionsWithParser | undefined;
-	return languageOptions?.parser;
-});
-
-export const typescriptParser = (typescriptParserConfig?.languageOptions as LanguageOptionsWithParser | undefined)?.parser;
-
-if (!typescriptParser) {
-	throw new Error('XO: Failed to locate TypeScript parser in eslint-config-xo-typescript');
-}
 
 /**
 Convert a `xo` config item to an ESLint config item.
@@ -152,11 +141,6 @@ export const preProcessXoConfig = (xoConfig: XoConfigItem[]): {config: XoConfigI
 						? {...languageOptions, parser: typescriptParser}
 						: {parser: typescriptParser};
 					config.languageOptions = updatedLanguageOptions;
-					config.plugins ??= {};
-					config.plugins = {
-						...config.plugins,
-						...configXoTypescript[1]?.plugins,
-					};
 					tsFilesGlob.push(...arrify(config.files ?? allFilesGlob).flat());
 					tsFilesIgnoresGlob.push(...arrify(config.ignores));
 				}

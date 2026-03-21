@@ -1,12 +1,11 @@
 /* eslint-disable complexity */
-import configXoTypescript from 'eslint-config-xo-typescript';
 import arrify from 'arrify';
 import {type Linter, type ESLint} from 'eslint';
-import configReact from 'eslint-config-xo-react';
+import eslintConfigXoReact from 'eslint-config-xo-react';
 import {type Options} from 'prettier';
 import pluginPrettier from 'eslint-plugin-prettier';
 import eslintConfigPrettier from 'eslint-config-prettier';
-import {fixupConfigRules, fixupPluginRules} from '@eslint/compat';
+import {fixupPluginRules} from '@eslint/compat';
 import {type XoConfigItem} from './types.js';
 import {config} from './config.js';
 import {xoToEslintConfigItem} from './utils.js';
@@ -108,10 +107,7 @@ export function xoToEslintConfig(flatXoConfig: XoConfigItem[] | undefined, {pret
 		if (xoConfigItem.semicolon === false) {
 			eslintConfigItem.rules ??= {};
 			eslintConfigItem.rules['@stylistic/semi'] = ['error', 'never'];
-			eslintConfigItem.rules['@stylistic/semi-spacing'] = [
-				'error',
-				{before: false, after: true},
-			];
+			eslintConfigItem.rules['@stylistic/semi-spacing'] = ['error', {before: false, after: true}];
 			eslintConfigItem.rules['@stylistic/member-delimiter-style'] = [
 				'error',
 				{
@@ -124,25 +120,20 @@ export function xoToEslintConfig(flatXoConfig: XoConfigItem[] | undefined, {pret
 		if (xoConfigItem.space) {
 			const spaces = typeof xoConfigItem.space === 'number' ? xoConfigItem.space : 2;
 			eslintConfigItem.rules ??= {};
-			eslintConfigItem.rules['@stylistic/indent'] = [
-				'error',
-				spaces,
-				// eslint-disable-next-line @typescript-eslint/naming-convention
-				{SwitchCase: 1},
-			];
+			eslintConfigItem.rules['@stylistic/indent'] = ['error', spaces, {SwitchCase: 1}]; // eslint-disable-line @typescript-eslint/naming-convention
 			eslintConfigItem.rules['@stylistic/indent-binary-ops'] = ['error', spaces];
 		} else if (xoConfigItem.space === false) {
-			// If a user sets this to false for a small subset of files for some reason,
-			// then we need to set them back to their original values.
 			eslintConfigItem.rules ??= {};
-			eslintConfigItem.rules['@stylistic/indent'] = configXoTypescript[1]?.rules?.['@stylistic/indent'];
-			eslintConfigItem.rules['@stylistic/indent-binary-ops'] = configXoTypescript[1]?.rules?.['@stylistic/indent-binary-ops'];
+			eslintConfigItem.rules['@stylistic/indent'] = ['error', 'tab', {SwitchCase: 1}]; // eslint-disable-line @typescript-eslint/naming-convention
+			eslintConfigItem.rules['@stylistic/indent-binary-ops'] = ['error', 'tab'];
 		}
 
 		if (xoConfigItem.react) {
 			// Ensure the files applied to the React config are the same as the config they are derived from
-			// TODO: Remove `fixupConfigRules` wrapping when eslint-config-xo-react supports ESLint 10 natively.
-			baseConfig.push({...fixupConfigRules(configReact)[0], ...(eslintConfigItem.files ? {files: eslintConfigItem.files} : {}), name: 'xo/react'});
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion -- `Space` includes `string` for legacy reasons but react config only accepts `boolean | number`.
+			for (const reactConfig of eslintConfigXoReact({space: xoConfigItem.space as boolean | number | undefined})) {
+				baseConfig.push({...reactConfig, ...(eslintConfigItem.files ? {files: eslintConfigItem.files} : {})});
+			}
 		}
 
 		// Prettier should generally be the last config in the array

@@ -153,7 +153,7 @@ test('with react option', t => {
 test('react option without files does not set files property', t => {
 	const flatConfig = xoToEslintConfig([{react: true}]);
 
-	const reactConfig = flatConfig.find(config => config.name === 'xo/react');
+	const reactConfig = flatConfig.find(config => config.rules?.['react/self-closing-comp']);
 	t.truthy(reactConfig);
 	t.false('files' in reactConfig!, 'react config should not have a files property when no files are specified');
 });

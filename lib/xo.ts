@@ -267,15 +267,15 @@ export class Xo {
 			...this.linterOptions,
 		});
 
-		const {config, tsFilesGlob, tsFilesIgnoresGlob} = preProcessXoConfig([
+		const {config: xoConfig, tsFilesGlob: tsGlob, tsFilesIgnoresGlob} = preProcessXoConfig([
 			this.baseXoConfig,
 			...flatOptions,
 		]);
 
-		this.xoConfig = config;
-		this.tsFilesGlob.push(...tsFilesGlob);
+		this.xoConfig = xoConfig;
+		this.tsFilesGlob.push(...tsGlob);
 		this.tsFilesIgnoresGlob.push(...tsFilesIgnoresGlob);
-		this.prettier = this.xoConfig.some(config => config.prettier);
+		this.prettier = this.xoConfig.some(xoConfigItem => xoConfigItem.prettier);
 		this.prettierConfig = await prettier.resolveConfig(flatConfigPath, {editorconfig: true}) ?? {};
 		this.flatConfigPath = flatConfigPath;
 	}

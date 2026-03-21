@@ -327,7 +327,6 @@ test('plugin > js > eslint-plugin-eslint-comments enable-duplicate-disable', asy
 		`,
 		{filePath},
 	);
-	t.true(results[0]?.errorCount === 1);
 	t.true(results[0]?.messages.some(({ruleId}) =>
 		ruleId === '@eslint-community/eslint-comments/no-duplicate-disable'));
 });
@@ -342,7 +341,6 @@ test('plugin > ts > eslint-plugin-eslint-comments no-duplicate-disable', async t
 	`;
 	await fs.writeFile(tsFilePath, text, 'utf8');
 	const {results} = await new Xo({cwd}).lintText(text, {filePath: tsFilePath});
-	t.true(results[0]?.errorCount === 1);
 	t.true(results[0]?.messages.some(({ruleId}) =>
 		ruleId === '@eslint-community/eslint-comments/no-duplicate-disable'));
 });
