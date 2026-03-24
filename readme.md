@@ -69,6 +69,7 @@ $ xo --help
 		--version         Print XO version
 		--open            Open files with issues in your editor
 		--quiet           Show only errors and no warnings
+		--max-warnings    Number of warnings to trigger nonzero exit code [Default: -1]
 		--stdin           Validate/fix code from stdin
 		--stdin-filename  Specify a filename for the --stdin option
 		--ignore          Ignore pattern globs, can be set multiple times

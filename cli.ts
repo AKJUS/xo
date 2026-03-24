@@ -31,6 +31,7 @@ const cli = meow(
     --version         Print XO version
     --open            Open files with issues in your editor
     --quiet           Show only errors and no warnings
+    --max-warnings    Number of warnings to trigger nonzero exit code [Default: -1]
     --stdin           Validate/fix code from stdin
     --stdin-filename  Specify a filename for the --stdin option
     --ignore          Ignore pattern globs, can be set multiple times
@@ -104,6 +105,10 @@ const cli = meow(
 				isMultiple: true,
 				aliases: ['ignores'],
 			},
+			maxWarnings: {
+				type: 'number',
+				default: -1,
+			},
 		},
 	},
 );
@@ -156,6 +161,11 @@ if (
 	linterOptions.quiet = true;
 }
 
+// --max-warnings needs warning counts, which --quiet filters out
+if (cliOptions.maxWarnings >= 0) {
+	linterOptions.quiet = false;
+}
+
 const log = async (report: {
 	errorCount: number;
 	warningCount: number;
@@ -172,6 +182,11 @@ const log = async (report: {
 	console.log(reporter.format(report.results, {cwd: linterOptions.cwd, ...report}));
 
 	process.exitCode = report.errorCount === 0 ? 0 : 1;
+
+	if (cliOptions.maxWarnings >= 0 && report.warningCount > cliOptions.maxWarnings) {
+		console.error(`XO found too many warnings (maximum: ${cliOptions.maxWarnings}).`);
+		process.exitCode = 1;
+	}
 };
 
 if (cliOptions.version) {

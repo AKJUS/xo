@@ -1193,6 +1193,80 @@ test('prettier validation detects semicolon conflicts', async t => {
 	t.true(error.message.includes('semicolon'));
 });
 
+test('xo --max-warnings=0 fails when file has warnings', async t => {
+	const {cwd} = t.context;
+	const filePath = path.join(cwd, 'test.js');
+	await fs.writeFile(filePath, dedent`console.log('hello');\n`, 'utf8');
+
+	const xoConfigPath = path.join(cwd, 'xo.config.js');
+	const xoConfig = dedent`
+		export default [
+			{ignores: ['xo.config.js']},
+			{
+				rules: {
+					'no-console': 'warn',
+				}
+			}
+		]
+	`;
+	await fs.writeFile(xoConfigPath, xoConfig, 'utf8');
+
+	// eslint-disable-next-line @typescript-eslint/naming-convention
+	const error = await t.throwsAsync<ExecaError>($({env: {...process.env, GITHUB_ACTIONS: ''}})`node ./dist/cli --cwd ${cwd} --max-warnings=0`);
+	t.true((error.stderr as string)?.includes('XO found too many warnings (maximum: 0).'));
+});
+
+test('xo --max-warnings=1 succeeds when warning count is within threshold', async t => {
+	const {cwd} = t.context;
+	const filePath = path.join(cwd, 'test.js');
+	await fs.writeFile(filePath, dedent`console.log('hello');\n`, 'utf8');
+
+	const xoConfigPath = path.join(cwd, 'xo.config.js');
+	const xoConfig = dedent`
+		export default [
+			{ignores: ['xo.config.js']},
+			{
+				rules: {
+					'no-console': 'warn',
+				}
+			}
+		]
+	`;
+	await fs.writeFile(xoConfigPath, xoConfig, 'utf8');
+
+	// eslint-disable-next-line @typescript-eslint/naming-convention
+	await t.notThrowsAsync($({env: {...process.env, GITHUB_ACTIONS: ''}})`node ./dist/cli --cwd ${cwd} --max-warnings=1`);
+});
+
+test('xo --max-warnings=0 succeeds when file has no warnings', async t => {
+	const filePath = path.join(t.context.cwd, 'test.js');
+	await fs.writeFile(filePath, dedent`console.log('hello');\n`, 'utf8');
+
+	await t.notThrowsAsync($`node ./dist/cli --cwd ${t.context.cwd} --max-warnings=0`);
+});
+
+test('xo default does not fail on warnings', async t => {
+	const {cwd} = t.context;
+	const filePath = path.join(cwd, 'test.js');
+	await fs.writeFile(filePath, dedent`console.log('hello');\n`, 'utf8');
+
+	const xoConfigPath = path.join(cwd, 'xo.config.js');
+	const xoConfig = dedent`
+		export default [
+			{ignores: ['xo.config.js']},
+			{
+				rules: {
+					'no-console': 'warn',
+				}
+			}
+		]
+	`;
+	await fs.writeFile(xoConfigPath, xoConfig, 'utf8');
+
+	// eslint-disable-next-line @typescript-eslint/naming-convention
+	await t.notThrowsAsync($({env: {...process.env, GITHUB_ACTIONS: ''}})`node ./dist/cli --cwd ${cwd}`);
+});
+
 test('xo does not hang when node_modules is missing', async t => {
 	const cwd = path.join(t.context.cwd, 'no-modules');
 	await fs.mkdir(cwd, {recursive: true});
