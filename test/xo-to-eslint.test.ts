@@ -253,6 +253,39 @@ test('no files config option remains undefined', t => {
 	t.is(flatConfig.at(-1)?.files, undefined);
 });
 
+test('prettier: true preserves special rules but keeps non-special formatting rules off', t => {
+	const flatConfig = xoToEslintConfig([{prettier: true}]);
+
+	const prettierRuleConfig = flatConfig.find(config =>
+		config?.rules?.['prettier/prettier'] !== undefined);
+
+	// Special rules are re-enabled
+	t.is(prettierRuleConfig?.rules?.['curly'], 'error');
+	t.is(prettierRuleConfig?.rules?.['no-unexpected-multiline'], 'error');
+	t.deepEqual(prettierRuleConfig?.rules?.['@stylistic/quotes'], ['error', 'single', {avoidEscape: true}]);
+	t.is(prettierRuleConfig?.rules?.['@stylistic/no-mixed-operators'], 'error');
+	t.deepEqual(prettierRuleConfig?.rules?.['prefer-arrow-callback'], ['error', {allowNamedFunctions: true}]);
+	t.is(prettierRuleConfig?.rules?.['arrow-body-style'], 'error');
+
+	// Non-special formatting rules remain off
+	t.is(prettierRuleConfig?.rules?.['@stylistic/semi'], 'off');
+	t.is(prettierRuleConfig?.rules?.['@stylistic/indent'], 'off');
+});
+
+test('prettier: compat preserves special rules while keeping formatting rules off', t => {
+	const flatConfig = xoToEslintConfig([{prettier: 'compat'}]);
+
+	const compatConfig = flatConfig.find(config =>
+		config?.rules?.['@stylistic/semi'] === 'off');
+
+	t.truthy(compatConfig);
+	t.is(compatConfig?.rules?.['@stylistic/indent'], 'off');
+	t.is(compatConfig?.rules?.['curly'], 'error');
+	t.is(compatConfig?.rules?.['no-unexpected-multiline'], 'error');
+	t.deepEqual(compatConfig?.rules?.['@stylistic/quotes'], ['error', 'single', {avoidEscape: true}]);
+	t.is(compatConfig?.rules?.['@stylistic/no-mixed-operators'], 'error');
+});
+
 test('prettier rules are applied after react rules', t => {
 	const flatConfig = xoToEslintConfig([{prettier: 'compat', react: true}]);
 

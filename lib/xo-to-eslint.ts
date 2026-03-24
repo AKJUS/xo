@@ -10,6 +10,19 @@ import {type XoConfigItem} from './types.js';
 import {config} from './config.js';
 import {xoToEslintConfigItem} from './utils.js';
 
+/**
+Rules from eslint-config-prettier's "special rules" list that XO configures and are safe to use with Prettier.
+@see https://github.com/prettier/eslint-config-prettier#special-rules
+*/
+const prettierCompatibleSpecialRules: Linter.RulesRecord = {
+	curly: 'error',
+	'no-unexpected-multiline': 'error',
+	'@stylistic/quotes': ['error', 'single', {avoidEscape: true}], // eslint-disable-line @typescript-eslint/naming-convention
+	'@stylistic/no-mixed-operators': 'error',
+	'prefer-arrow-callback': ['error', {allowNamedFunctions: true}],
+	'arrow-body-style': 'error',
+};
+
 export type CreateConfigOptions = {
 	prettierOptions?: Options;
 };
@@ -139,7 +152,14 @@ export function xoToEslintConfig(flatXoConfig: XoConfigItem[] | undefined, {pret
 		// Prettier should generally be the last config in the array
 		if (xoConfigItem.prettier) {
 			if (xoConfigItem.prettier === 'compat') {
-				baseConfig.push({...eslintConfigPrettier, ...(eslintConfigItem.files ? {files: eslintConfigItem.files} : {})});
+				baseConfig.push({
+					...eslintConfigPrettier,
+					rules: {
+						...eslintConfigPrettier.rules,
+						...prettierCompatibleSpecialRules,
+					},
+					...(eslintConfigItem.files ? {files: eslintConfigItem.files} : {}),
+				});
 			} else {
 				// Validate that Prettier options match other `xoConfig` options.
 				// eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
@@ -181,6 +201,7 @@ export function xoToEslintConfig(flatXoConfig: XoConfigItem[] | undefined, {pret
 					// eslint-disable-next-line @typescript-eslint/naming-convention
 					'prettier/prettier': ['error', prettierConfig],
 					...eslintConfigPrettier.rules,
+					...prettierCompatibleSpecialRules,
 				};
 
 				eslintConfigItem.rules = rulesWithPrettier;
