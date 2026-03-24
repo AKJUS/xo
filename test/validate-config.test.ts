@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-type-assertion */
 import test from 'ava';
 import {type XoConfigItem} from '../lib/types.js';
 import {validateXoConfig, preProcessXoConfig} from '../lib/utils.js';
@@ -62,7 +63,7 @@ test('throws for legacy property in later config items', t => {
 	const config = [{}, {rules: {}}, {globals: {}}] as XoConfigItem[];
 	t.throws(() => {
 		validateXoConfig(config);
-	}, {message: /Invalid XO config property `globals`/});
+	}, {message: /Invalid XO config property `globals`/v});
 });
 
 test('skips base config at index 0', t => {
@@ -76,5 +77,5 @@ test('preProcessXoConfig throws for legacy properties', t => {
 	const config = [{}, {env: {browser: true}}] as XoConfigItem[];
 	t.throws(() => {
 		preProcessXoConfig(config);
-	}, {message: /Invalid XO config property `env`/});
+	}, {message: /Invalid XO config property `env`/v});
 });

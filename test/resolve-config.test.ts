@@ -168,6 +168,34 @@ test('resolves all config extensions types', async t => {
 	}
 });
 
+test('loading TypeScript config does not create temporary files', async t => {
+	const testConfig = `export default [
+		{
+			space: true,
+		},
+	];`;
+
+	for (const extension of ['.ts', '.mts']) {
+		const configFile = path.join(t.context.cwd, `xo.config${extension}`);
+		// eslint-disable-next-line no-await-in-loop
+		await fs.writeFile(configFile, testConfig, 'utf8');
+
+		// eslint-disable-next-line no-await-in-loop
+		const filesBefore = await fs.readdir(t.context.cwd);
+		// eslint-disable-next-line no-await-in-loop
+		const {flatOptions, flatConfigPath} = await resolveXoConfig({cwd: t.context.cwd});
+		// eslint-disable-next-line no-await-in-loop
+		const filesAfter = await fs.readdir(t.context.cwd);
+
+		t.deepEqual(flatConfigPath, configFile);
+		t.deepEqual(flatOptions, [{space: true}]);
+		t.deepEqual(filesAfter, filesBefore, `No temporary files should be created when loading xo.config${extension}`);
+
+		// eslint-disable-next-line no-await-in-loop
+		await fs.rm(configFile);
+	}
+});
+
 test('resolves all custom config extensions types', async t => {
 	const testConfigEsm = `export default [
 		{

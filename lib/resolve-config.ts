@@ -1,9 +1,14 @@
 import path from 'node:path';
 import process from 'node:process';
-import {cosmiconfig, defaultLoaders} from 'cosmiconfig';
+import {cosmiconfig} from 'cosmiconfig';
 import arrify from 'arrify';
+import {createJiti} from 'jiti';
 import {type FlatXoConfig, type LinterOptions, type XoConfigItem} from './types.js';
 import {moduleName} from './constants.js';
+
+const jiti = createJiti(import.meta.url, {moduleCache: false});
+
+const loadTypeScriptConfig = async (filepath: string) => jiti.import(filepath, {default: true});
 
 /**
 Finds the XO config file.
@@ -30,7 +35,8 @@ export async function resolveXoConfig(options: LinterOptions): Promise<{
 				`${moduleName}.config.mts`,
 			],
 			loaders: {
-				'.mts': defaultLoaders['.ts'], // eslint-disable-line @typescript-eslint/naming-convention
+				'.ts': loadTypeScriptConfig, // eslint-disable-line @typescript-eslint/naming-convention
+				'.mts': loadTypeScriptConfig, // eslint-disable-line @typescript-eslint/naming-convention
 			},
 			stopDir: stopDirectory,
 			cache: true,
