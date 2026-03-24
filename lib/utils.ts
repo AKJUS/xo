@@ -72,6 +72,41 @@ export const matchFilesForTsConfig = (cwd: string, files: string[] | undefined, 
 	},
 ).map(file => path.resolve(cwd, file));
 
+const legacyPropertyHints: Record<string, string> = {
+	overrides: 'Use an array of config objects with `files` patterns instead.',
+	extends: 'Spread the config directly into your XO config array.',
+	env: 'Use `languageOptions.globals` instead.',
+	globals: 'Move to `languageOptions.globals`.',
+	parser: 'Move to `languageOptions.parser`.',
+	parserOptions: 'Move to `languageOptions.parserOptions`.',
+	root: 'Not needed in flat config.',
+	ecmaVersion: 'Move to `languageOptions.ecmaVersion`.',
+	sourceType: 'Move to `languageOptions.sourceType`.',
+	noInlineConfig: 'Move to `linterOptions.noInlineConfig`.',
+	reportUnusedDisableDirectives: 'Move to `linterOptions.reportUnusedDisableDirectives`.',
+	ignorePatterns: 'Use `ignores` instead.',
+};
+
+/**
+Validate an XO config array for legacy ESLint config properties that are not supported in flat config.
+
+@param xoConfig - The flat XO config to validate.
+*/
+export const validateXoConfig = (xoConfig: XoConfigItem[]): void => {
+	for (const [index, config] of xoConfig.entries()) {
+		if (index === 0) {
+			continue; // Skip internal base config prepended by XO
+		}
+
+		for (const key of Object.keys(config)) {
+			const hint = legacyPropertyHints[key];
+			if (hint) {
+				throw new Error(`Invalid XO config property \`${key}\`. ${hint}`);
+			}
+		}
+	}
+};
+
 /**
 Once a config is resolved, it is pre-processed to ensure that all properties are set correctly.
 
@@ -82,6 +117,8 @@ This includes ensuring that user-defined properties can override XO defaults, an
 */
 // eslint-disable-next-line complexity
 export const preProcessXoConfig = (xoConfig: XoConfigItem[]): {config: XoConfigItem[]; tsFilesGlob: string[]; tsFilesIgnoresGlob: string[]} => {
+	validateXoConfig(xoConfig);
+
 	const tsFilesGlob: string[] = [];
 	const tsFilesIgnoresGlob: string[] = [];
 
@@ -91,7 +128,7 @@ export const preProcessXoConfig = (xoConfig: XoConfigItem[]): {config: XoConfigI
 		const languageOptions = config.languageOptions as Linter.LanguageOptions | undefined;
 		const parserOptions = languageOptions?.parserOptions as TypeScriptParserOptions | undefined;
 
-		// We can skip the first config  item, as it is the base config item.
+		// We can skip the first config item, as it is the base config item.
 		if (idx === 0) {
 			processedConfig.push(config);
 			continue;
