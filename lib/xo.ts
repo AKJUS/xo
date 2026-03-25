@@ -41,6 +41,7 @@ type TypeScriptParserOptions = Linter.ParserOptions & {
 };
 
 export const ignoredFileWarningMessage = 'File ignored because of a matching ignore pattern.';
+export const noFilesFoundErrorMessage = 'No files matching the pattern were found.';
 
 const createIgnoredLintResult = (filePath: string): ESLint.LintResult => ({
 	filePath,
@@ -434,6 +435,11 @@ export class Xo {
 
 		globs = arrify(globs);
 
+		// If any explicitly provided pattern is non-dynamic (a literal file path), throw when no files are found.
+		// Dynamic glob patterns matching nothing is acceptable — the project may simply have no matching files yet.
+		// The default glob substitution above is always dynamic, so this is false when no globs were provided.
+		const hasExplicitFilePaths = globs.some(glob => !isDynamicPattern(glob));
+
 		const files: string | string[] = await globby(globs, {
 			// Merge in command line ignores
 			ignore: [...defaultIgnores, ...arrify(this.baseXoConfig.ignores)],
@@ -454,6 +460,10 @@ export class Xo {
 		const ignoredResults = await getIgnoredExplicitFileResults(this.linterOptions.cwd, globs, eslint);
 
 		if (files.length === 0) {
+			if (hasExplicitFilePaths && ignoredResults.length === 0) {
+				throw new Error(noFilesFoundErrorMessage);
+			}
+
 			return this.processReport(ignoredResults);
 		}
 

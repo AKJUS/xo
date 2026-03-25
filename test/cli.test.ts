@@ -7,7 +7,7 @@ import dedent from 'dedent';
 import {$, type ExecaError} from 'execa';
 import {pathExists} from 'path-exists';
 import {type TsConfigJson} from 'get-tsconfig';
-import {ignoredFileWarningMessage} from '../lib/xo.js';
+import {ignoredFileWarningMessage, noFilesFoundErrorMessage} from '../lib/xo.js';
 import {copyTestProject} from './helpers/copy-test-project.js';
 
 const test = _test as TestFn<{cwd: string}>;
@@ -25,6 +25,11 @@ test('xo --cwd', async t => {
 	await fs.writeFile(filePath, dedent`console.log('hello');\n`, 'utf8');
 
 	await t.notThrowsAsync($`node ./dist/cli --cwd ${t.context.cwd}`);
+});
+
+test('xo throws when no files match explicit pattern', async t => {
+	const error = await t.throwsAsync<ExecaError>($`node ./dist/cli --cwd ${t.context.cwd} nonexistent.js`);
+	t.true((error.stderr as string)?.includes(noFilesFoundErrorMessage));
 });
 
 test('xo warns when explicit file is ignored', async t => {

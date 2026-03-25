@@ -5,7 +5,7 @@ import os from 'node:os';
 import path from 'node:path';
 import _test, {type TestFn} from 'ava'; // eslint-disable-line ava/use-test
 import dedent from 'dedent';
-import {Xo, ignoredFileWarningMessage} from '../../lib/xo.js';
+import {Xo, ignoredFileWarningMessage, noFilesFoundErrorMessage} from '../../lib/xo.js';
 import {copyTestProject} from '../helpers/copy-test-project.js';
 
 const test = _test as TestFn<{cwd: string}>;
@@ -256,10 +256,18 @@ test('negated global ignore patterns keep explicitly unignored files linted', as
 	t.is(results[0]?.messages[0]?.ruleId, '@stylistic/semi');
 });
 
-test('no warning for nonexistent explicit file', async t => {
-	const xo = new Xo({cwd: t.context.cwd});
-	const {results} = await xo.lintFiles('nonexistent.js');
-	t.is(results.length, 0);
+test('throws for nonexistent explicit file', async t => {
+	await t.throwsAsync(
+		new Xo({cwd: t.context.cwd}).lintFiles('nonexistent.js'),
+		{message: noFilesFoundErrorMessage},
+	);
+});
+
+test('throws for array of nonexistent explicit files', async t => {
+	await t.throwsAsync(
+		new Xo({cwd: t.context.cwd}).lintFiles(['nonexistent-a.js', 'nonexistent-b.js']),
+		{message: noFilesFoundErrorMessage},
+	);
 });
 
 test('no warning for glob pattern when all files are ignored', async t => {
@@ -284,6 +292,14 @@ test('mixed explicit files: some ignored, some not', async t => {
 	t.is(linted!.messages.length, 0);
 	t.truthy(ignored);
 	t.is(ignored!.messages[0]?.message, ignoredFileWarningMessage);
+});
+
+test('does not throw for dynamic glob pattern with no matches', async t => {
+	await t.notThrowsAsync(new Xo({cwd: t.context.cwd}).lintFiles('nonexistent/**/*.js'));
+});
+
+test('does not throw when no globs provided and no files found', async t => {
+	await t.notThrowsAsync(new Xo({cwd: t.context.cwd}).lintFiles());
 });
 
 test('normalize cwd path casing', async t => {
