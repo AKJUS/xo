@@ -606,3 +606,29 @@ test('no-mixed-operators catches ?? mixed with comparison', async t => {
 	const messages = results?.[0]?.messages ?? [];
 	t.true(messages.some(m => m.ruleId === '@stylistic/no-mixed-operators'));
 });
+
+test('prettier > unicorn/template-indent is disabled', async t => {
+	const {cwd} = t.context;
+	const filePath = path.join(cwd, 'test.js');
+	await fs.writeFile(
+		path.join(cwd, 'xo.config.js'),
+		'export default [{prettier: true}];\n',
+		'utf8',
+	);
+	const code = dedent`
+		const html = String.raw;
+
+		export function hello(condition) {
+			return condition
+				? html\`
+					<div>
+						<p>Hello, world!</p>
+					</div>
+				\`
+				: html\`<div></div>\`;
+		}\n
+	`;
+	const {results} = await new Xo({cwd}).lintText(code, {filePath});
+	const ruleIds = results[0]?.messages?.map(({ruleId}) => ruleId) ?? [];
+	t.false(ruleIds.includes('unicorn/template-indent'));
+});
