@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unsafe-type-assertion */
 import fs from 'node:fs/promises';
+import {fileURLToPath} from 'node:url';
 import path from 'node:path';
 import _test, {type TestFn} from 'ava'; // eslint-disable-line ava/use-test
 import dedent from 'dedent';
@@ -631,4 +632,77 @@ test('prettier > unicorn/template-indent is disabled', async t => {
 	const {results} = await new Xo({cwd}).lintText(code, {filePath});
 	const ruleIds = results[0]?.messages?.map(({ruleId}) => ruleId) ?? [];
 	t.false(ruleIds.includes('unicorn/template-indent'));
+});
+
+// Anchor createRequire to a path inside the xo project tree so test configs can resolve eslint-plugin-vue
+const vuePluginRequireAnchor = JSON.stringify(fileURLToPath(import.meta.url));
+
+test('vue > lints vue files with eslint-plugin-vue', async t => {
+	const {cwd} = t.context;
+	const filePath = path.join(cwd, 'test.vue');
+	await fs.writeFile(
+		path.join(cwd, 'xo.config.js'),
+		dedent`
+			import {createRequire} from 'node:module';
+			const require = createRequire(${vuePluginRequireAnchor});
+			const vuePlugin = require('eslint-plugin-vue');
+			export default [...vuePlugin.configs['flat/recommended']];\n
+		`,
+		'utf8',
+	);
+	const text = dedent`
+		<template>
+			<div>{{ message }}</div>
+		</template>
+
+		<script>
+		export default {
+			name: 'a',
+			data() {
+				return {
+					message: 'hello',
+				};
+			},
+		};
+		</script>\n
+	`;
+	await fs.writeFile(filePath, text, 'utf8');
+	const {results} = await new Xo({cwd}).lintText(text, {filePath});
+	const ruleIds = results[0]?.messages?.map(({ruleId}) => ruleId) ?? [];
+	t.true(ruleIds.includes('vue/multi-word-component-names'));
+});
+
+test('vue > semicolon option applies to vue files', async t => {
+	const {cwd} = t.context;
+	const filePath = path.join(cwd, 'test.vue');
+	await fs.writeFile(
+		path.join(cwd, 'xo.config.js'),
+		dedent`
+			import {createRequire} from 'node:module';
+			const require = createRequire(${vuePluginRequireAnchor});
+			const vuePlugin = require('eslint-plugin-vue');
+			export default [{semicolon: false}, ...vuePlugin.configs['flat/recommended']];\n
+		`,
+		'utf8',
+	);
+	const text = dedent`
+		<template>
+			<div>{{ message }}</div>
+		</template>
+
+		<script>
+		export default {
+			name: 'MyComponent',
+			data() {
+				return {
+					message: 'hello',
+				};
+			},
+		};
+		</script>\n
+	`;
+	await fs.writeFile(filePath, text, 'utf8');
+	const {results} = await new Xo({cwd}).lintText(text, {filePath});
+	const ruleIds = results[0]?.messages?.map(({ruleId}) => ruleId) ?? [];
+	t.true(ruleIds.includes('@stylistic/semi'));
 });
