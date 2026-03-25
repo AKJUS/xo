@@ -18,7 +18,18 @@ const prettierCompatibleSpecialRules: Linter.RulesRecord = {
 	curly: 'error',
 	'no-unexpected-multiline': 'error',
 	'@stylistic/quotes': ['error', 'single', {avoidEscape: true}], // eslint-disable-line @typescript-eslint/naming-convention
-	'@stylistic/no-mixed-operators': 'error',
+	'@stylistic/no-mixed-operators': [
+		'error',
+		{
+			groups: [
+				['+', '-', '*', '/', '%', '**', '??'],
+				['&', '|', '^', '~', '<<', '>>', '>>>', '??'],
+				['==', '!=', '===', '!==', '>', '>=', '<', '<=', '??'],
+				['&&', '||', '??'],
+				['in', 'instanceof', '??'],
+			],
+		},
+	],
 	'prefer-arrow-callback': ['error', {allowNamedFunctions: true}],
 	'arrow-body-style': 'error',
 };

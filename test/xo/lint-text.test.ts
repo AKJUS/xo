@@ -573,3 +573,36 @@ test('rulesMeta is included in lint results', async t => {
 	t.truthy(rulesMeta['@stylistic/semi']);
 	t.is(rulesMeta['@stylistic/semi']?.type, 'layout');
 });
+
+test('no-mixed-operators catches ?? mixed with comparison', async t => {
+	const {cwd} = t.context;
+	const filePath = path.join(cwd, 'test.js');
+	await fs.writeFile(
+		path.join(cwd, 'xo.config.js'),
+		dedent`
+			export default [
+				{
+					rules: {
+						'@stylistic/no-mixed-operators': [
+							'error',
+							{
+								groups: [
+									['==', '!=', '===', '!==', '>', '>=', '<', '<=', '??'],
+								],
+							},
+						],
+						'no-unused-vars': 'off',
+						'no-undef': 'off',
+					},
+				},
+			];\n
+		`,
+		'utf8',
+	);
+	const {results} = await new Xo({cwd}).lintText(
+		dedent`const x = a ?? b === c;\n`,
+		{filePath},
+	);
+	const messages = results?.[0]?.messages ?? [];
+	t.true(messages.some(m => m.ruleId === '@stylistic/no-mixed-operators'));
+});

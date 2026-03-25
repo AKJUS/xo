@@ -263,7 +263,18 @@ test('prettier: true preserves special rules but keeps non-special formatting ru
 	t.is(prettierRuleConfig?.rules?.['curly'], 'error');
 	t.is(prettierRuleConfig?.rules?.['no-unexpected-multiline'], 'error');
 	t.deepEqual(prettierRuleConfig?.rules?.['@stylistic/quotes'], ['error', 'single', {avoidEscape: true}]);
-	t.is(prettierRuleConfig?.rules?.['@stylistic/no-mixed-operators'], 'error');
+	t.deepEqual(prettierRuleConfig?.rules?.['@stylistic/no-mixed-operators'], [
+		'error',
+		{
+			groups: [
+				['+', '-', '*', '/', '%', '**', '??'],
+				['&', '|', '^', '~', '<<', '>>', '>>>', '??'],
+				['==', '!=', '===', '!==', '>', '>=', '<', '<=', '??'],
+				['&&', '||', '??'],
+				['in', 'instanceof', '??'],
+			],
+		},
+	]);
 	t.deepEqual(prettierRuleConfig?.rules?.['prefer-arrow-callback'], ['error', {allowNamedFunctions: true}]);
 	t.is(prettierRuleConfig?.rules?.['arrow-body-style'], 'error');
 
@@ -283,7 +294,18 @@ test('prettier: compat preserves special rules while keeping formatting rules of
 	t.is(compatConfig?.rules?.['curly'], 'error');
 	t.is(compatConfig?.rules?.['no-unexpected-multiline'], 'error');
 	t.deepEqual(compatConfig?.rules?.['@stylistic/quotes'], ['error', 'single', {avoidEscape: true}]);
-	t.is(compatConfig?.rules?.['@stylistic/no-mixed-operators'], 'error');
+	t.deepEqual(compatConfig?.rules?.['@stylistic/no-mixed-operators'], [
+		'error',
+		{
+			groups: [
+				['+', '-', '*', '/', '%', '**', '??'],
+				['&', '|', '^', '~', '<<', '>>', '>>>', '??'],
+				['==', '!=', '===', '!==', '>', '>=', '<', '<=', '??'],
+				['&&', '||', '??'],
+				['in', 'instanceof', '??'],
+			],
+		},
+	]);
 });
 
 test('prettier rules are applied after react rules', t => {
