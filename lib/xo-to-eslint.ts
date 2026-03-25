@@ -5,7 +5,7 @@ import eslintConfigXoReact from 'eslint-config-xo-react';
 import {type Options} from 'prettier';
 import pluginPrettier from 'eslint-plugin-prettier';
 import eslintConfigPrettier from 'eslint-config-prettier';
-import {fixupPluginRules} from '@eslint/compat';
+import {fixupPluginRules, fixupConfigRules} from '@eslint/compat';
 import {type XoConfigItem} from './types.js';
 import {config} from './config.js';
 import {xoToEslintConfigItem} from './utils.js';
@@ -154,8 +154,9 @@ export function xoToEslintConfig(flatXoConfig: XoConfigItem[] | undefined, {pret
 
 		if (xoConfigItem.react) {
 			// Ensure the files applied to the React config are the same as the config they are derived from
+			// TODO: Remove `fixupConfigRules` wrapping when eslint-plugin-react supports ESLint 10 natively.
 			// eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion -- `Space` includes `string` for legacy reasons but react config only accepts `boolean | number`.
-			for (const reactConfig of eslintConfigXoReact({space: xoConfigItem.space as boolean | number | undefined})) {
+			for (const reactConfig of fixupConfigRules(eslintConfigXoReact({space: xoConfigItem.space as boolean | number | undefined}))) {
 				baseConfig.push({...reactConfig, ...(eslintConfigItem.files ? {files: eslintConfigItem.files} : {})});
 			}
 		}

@@ -1,6 +1,6 @@
 import fs from 'node:fs/promises';
 import _test, {type TestFn} from 'ava'; // eslint-disable-line ava/use-test
-import {type Linter} from 'eslint';
+import {Linter} from 'eslint';
 import micromatch from 'micromatch';
 import {xoToEslintConfig} from '../lib/xo-to-eslint.js';
 import {frameworkExtensions} from '../lib/constants.js';
@@ -306,6 +306,17 @@ test('prettier: compat preserves special rules while keeping formatting rules of
 			],
 		},
 	]);
+});
+
+test('react config lints JSX without throwing', t => {
+	const flatConfig = xoToEslintConfig([{react: true}]);
+	const linter = new Linter();
+
+	// Regression test for https://github.com/xojs/xo/issues/868
+	// Should not throw: "Cannot read properties of undefined (reading 'bind')"
+	t.notThrows(() => {
+		linter.verify('const x = () => <div />;', flatConfig, {filename: 'test.jsx'});
+	});
 });
 
 test('prettier rules are applied after react rules', t => {
