@@ -2,7 +2,7 @@
 import path from 'node:path';
 import fs from 'node:fs/promises';
 import process from 'node:process';
-import {type Rule, type ESLint} from 'eslint';
+import {ESLint, type Rule} from 'eslint';
 import formatterPretty from 'eslint-formatter-pretty';
 import getStdin from 'get-stdin';
 import meow from 'meow';
@@ -180,13 +180,42 @@ const log = async (report: {
 	fixableWarningCount: number;
 	results: ESLint.LintResult[];
 	rulesMeta: Record<string, Rule.RuleMetaData>;
-}) => {
-	const reporter = cliOptions.reporter
-		? await new Xo(linterOptions, baseXoConfigOptions).getFormatter(cliOptions.reporter)
-		: {format: formatterPretty};
+}, xo: Xo) => {
+	const reporterName = cliOptions.reporter;
+	const shouldUsePrettyReporter = reporterName === undefined;
 
-	// @ts-expect-error the types don't quite match up here
-	console.log(reporter.format(report.results, {cwd: linterOptions.cwd, ...report}));
+	// Hide warnings when there are errors to reduce noise in the default human-readable output.
+	const results = shouldUsePrettyReporter && report.errorCount > 0 && cliOptions.maxWarnings < 0
+		? ESLint.getErrorResults(report.results)
+		: report.results;
+
+	if (shouldUsePrettyReporter) {
+		const counts = {
+			errorCount: 0,
+			warningCount: 0,
+			fixableErrorCount: 0,
+			fixableWarningCount: 0,
+		};
+
+		for (const result of results) {
+			counts.errorCount += result.errorCount;
+			counts.warningCount += result.warningCount;
+			counts.fixableErrorCount += result.fixableErrorCount;
+			counts.fixableWarningCount += result.fixableWarningCount;
+		}
+
+		const formatterMetadata = {
+			cwd: linterOptions.cwd,
+			...report,
+			...counts,
+			results,
+		};
+
+		console.log(formatterPretty(results, formatterMetadata));
+	} else {
+		const reporter = await xo.getFormatter(reporterName);
+		console.log(await reporter.format(results));
+	}
 
 	process.exitCode = report.errorCount === 0 ? 0 : 1;
 
@@ -248,7 +277,7 @@ try {
 		}
 
 		const xo = new Xo(linterOptions, baseXoConfigOptions);
-		await log(await xo.lintText(stdin, {filePath: cliOptions.stdinFilename, warnIgnored: false}));
+		await log(await xo.lintText(stdin, {filePath: cliOptions.stdinFilename, warnIgnored: false}), xo);
 		if (shouldRemoveStdInFile) {
 			await fs.rm(cliOptions.stdinFilename);
 		}
@@ -279,7 +308,7 @@ try {
 			await openReport(report);
 		}
 
-		await log(report);
+		await log(report, xo);
 	}
 } catch (error) {
 	if (isErrorWithExitCode(error)) {

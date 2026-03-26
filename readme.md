@@ -309,6 +309,10 @@ const xoConfig = [{ignores: ['!vendor/**']}];
 export default xoConfig;
 ```
 
+### Warnings are hidden when there are errors
+
+When XO finds errors, warnings are automatically hidden to reduce noise and let you focus on what matters. Warnings are shown normally when there are no errors. Use `--quiet` to always suppress warnings, or `--max-warnings` to treat warnings as errors.
+
 ### Bulk suppression
 
 XO automatically respects an [`eslint-suppressions.json`](https://eslint.org/docs/latest/use/suppressions) file if one exists in the working directory. This lets you suppress existing violations while still enforcing rules on new code — useful for incrementally adopting stricter rules in a large codebase.

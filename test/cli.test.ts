@@ -214,6 +214,23 @@ test('xo --reporter json', async t => {
 	t.is(typeof results[0], 'object');
 });
 
+test('xo --reporter json keeps warning-only results when errors exist', async t => {
+	const warningFilePath = path.join(t.context.cwd, 'warning.js');
+	const errorFilePath = path.join(t.context.cwd, 'error.js');
+	await fs.writeFile(warningFilePath, dedent`const x = true;\n`, 'utf8');
+	await fs.writeFile(errorFilePath, dedent`console.log('hello')\n`, 'utf8');
+
+	const error: ExecaError = await t.throwsAsync($`node ./dist/cli --cwd ${t.context.cwd} --reporter=json ${warningFilePath} ${errorFilePath}`);
+
+	const results = JSON.parse(error?.stdout?.toString() ?? '') as Array<{filePath: string}>;
+
+	t.is(results.length, 2);
+	t.deepEqual(
+		results.map(result => path.basename(result.filePath)).toSorted(),
+		['error.js', 'warning.js'],
+	);
+});
+
 test('xo --stdin --stdin-filename=test.ts --fix', async t => {
 	const {stdout} = await $`echo ${'const x: boolean = true'}`.pipe`node ./dist/cli --cwd=${t.context.cwd} --stdin --stdin-filename=test.ts --fix`;
 	t.is(stdout, 'const x = true;');
@@ -1279,6 +1296,64 @@ test('xo default does not fail on warnings', async t => {
 
 	// eslint-disable-next-line @typescript-eslint/naming-convention
 	await t.notThrowsAsync($({env: {...process.env, GITHUB_ACTIONS: ''}})`node ./dist/cli --cwd ${cwd}`);
+});
+
+test('xo hides warnings when file has both errors and warnings', async t => {
+	const {cwd} = t.context;
+	const filePath = path.join(cwd, 'test.js');
+	await fs.writeFile(filePath, dedent`
+			var x = 1;
+			console.log('hello');
+		\n
+	`, 'utf8');
+
+	const xoConfigPath = path.join(cwd, 'xo.config.js');
+	const xoConfig = dedent`
+		export default [
+			{ignores: ['xo.config.js']},
+			{
+				rules: {
+					'no-console': 'error',
+					'no-var': 'warn',
+				}
+			}
+		]
+	`;
+	await fs.writeFile(xoConfigPath, xoConfig, 'utf8');
+
+	// eslint-disable-next-line @typescript-eslint/naming-convention
+	const error = await t.throwsAsync<ExecaError>($({env: {...process.env, GITHUB_ACTIONS: ''}})`node ./dist/cli --cwd ${cwd}`);
+	t.true((error.stdout as string)?.includes('no-console'), 'Error should appear in output');
+	t.false((error.stdout as string)?.includes('no-var'), 'Warning should be hidden when errors exist');
+});
+
+test('xo shows warnings when file has both errors and warnings with --max-warnings', async t => {
+	const {cwd} = t.context;
+	const filePath = path.join(cwd, 'test.js');
+	await fs.writeFile(filePath, dedent`
+			var x = 1;
+			console.log('hello');
+		\n
+	`, 'utf8');
+
+	const xoConfigPath = path.join(cwd, 'xo.config.js');
+	const xoConfig = dedent`
+		export default [
+			{ignores: ['xo.config.js']},
+			{
+				rules: {
+					'no-console': 'error',
+					'no-var': 'warn',
+				}
+			}
+		]
+	`;
+	await fs.writeFile(xoConfigPath, xoConfig, 'utf8');
+
+	// eslint-disable-next-line @typescript-eslint/naming-convention
+	const error = await t.throwsAsync<ExecaError>($({env: {...process.env, GITHUB_ACTIONS: ''}})`node ./dist/cli --cwd ${cwd} --max-warnings=0`);
+	t.true((error.stdout as string)?.includes('no-console'), 'Error should appear in output');
+	t.true((error.stdout as string)?.includes('no-var'), 'Warning should appear when --max-warnings is set');
 });
 
 test('xo does not hang when node_modules is missing', async t => {
