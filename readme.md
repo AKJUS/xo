@@ -267,6 +267,31 @@ const xoConfig = [
 export default xoConfig;
 ```
 
+### Shareable configs
+
+If you want to extend a [shareable ESLint config](https://eslint.org/docs/latest/extend/shareable-configs) or any other npm package, use `xo.config.js` instead of `package.json`, since `package.json` only supports serializable values and cannot `import`.
+
+`xo.config.js`
+
+```js
+export {default} from 'my-shareable-config';
+```
+
+You can also extend and override:
+
+```js
+import myConfig from 'my-shareable-config';
+
+export default [
+	...myConfig,
+	{
+		rules: {
+			// Your overrides
+		},
+	},
+];
+```
+
 ## TypeScript
 
 XO will automatically lint TypeScript files (`.ts`, `.mts`, `.cts`, and `.tsx`) with the rules defined in [eslint-config-xo-typescript#use-with-xo](https://github.com/xojs/eslint-config-xo-typescript#use-with-xo).
