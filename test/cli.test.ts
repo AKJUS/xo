@@ -40,6 +40,15 @@ test('xo warns when explicit file is ignored', async t => {
 	t.true(stdout.includes(ignoredFileWarningMessage));
 });
 
+test('xo fails with exit code 2 for missing custom suppressions file', async t => {
+	const filePath = path.join(t.context.cwd, 'test.js');
+	await fs.writeFile(filePath, dedent`console.log('hello')\n`, 'utf8');
+
+	const error = await t.throwsAsync<ExecaError>($`node ./dist/cli --cwd ${t.context.cwd} --suppressions-location missing-suppressions.json`);
+	t.is(error.exitCode, 2);
+	t.true((error.stderr as string).includes('The suppressions file does not exist.'));
+});
+
 test('xo --fix', async t => {
 	const filePath = path.join(t.context.cwd, 'test.js');
 	await fs.writeFile(filePath, dedent`console.log('hello')\n`, 'utf8');

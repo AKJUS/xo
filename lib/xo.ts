@@ -40,8 +40,16 @@ type TypeScriptParserOptions = Linter.ParserOptions & {
 	programs?: unknown[];
 };
 
+type XoError = Error & {
+	exitCode: number;
+};
+
 export const ignoredFileWarningMessage = 'File ignored because of a matching ignore pattern.';
 export const noFilesFoundErrorMessage = 'No files matching the pattern were found.';
+
+const suppressionsFileMissingErrorMessage = 'The suppressions file does not exist. Please run the command with `--suppress-all` or `--suppress-rule` to create it.';
+
+const createErrorWithExitCode = (message: string, exitCode: number): XoError => Object.assign(new Error(message), {exitCode});
 
 const createIgnoredLintResult = (filePath: string): ESLint.LintResult => ({
 	filePath,
@@ -111,6 +119,7 @@ export class Xo {
 				quiet: options.quiet,
 				ts: options.ts ?? true,
 				configPath: options.configPath,
+				suppressionsLocation: options.suppressionsLocation,
 			},
 			{
 				react: options.react,
@@ -139,6 +148,7 @@ export class Xo {
 				quiet: options.quiet,
 				ts: options.ts,
 				configPath: options.configPath,
+				suppressionsLocation: options.suppressionsLocation,
 			},
 			{
 				react: options.react,
@@ -415,6 +425,8 @@ export class Xo {
 			cacheLocation: this.cacheLocation,
 			cacheStrategy: 'content',
 			fix: this.linterOptions.fix,
+			applySuppressions: true,
+			suppressionsLocation: this.linterOptions.suppressionsLocation,
 		};
 
 		// Always create new instance to support reuse with updated config
@@ -450,6 +462,14 @@ export class Xo {
 			cwd: this.linterOptions.cwd,
 		});
 
+		if (this.linterOptions.suppressionsLocation) {
+			const suppressionsFilePath = path.resolve(this.linterOptions.cwd, this.linterOptions.suppressionsLocation);
+
+			if (!syncFs.existsSync(suppressionsFilePath)) {
+				throw createErrorWithExitCode(suppressionsFileMissingErrorMessage, 2);
+			}
+		}
+
 		await this.initEslint(files);
 
 		if (!this.eslint) {
@@ -483,6 +503,14 @@ export class Xo {
 		lintTextOptions: LintTextOptions,
 	): Promise<XoLintResult> {
 		const {filePath, warnIgnored} = lintTextOptions;
+
+		if (this.linterOptions.suppressionsLocation) {
+			const suppressionsFilePath = path.resolve(this.linterOptions.cwd, this.linterOptions.suppressionsLocation);
+
+			if (!syncFs.existsSync(suppressionsFilePath)) {
+				throw createErrorWithExitCode(suppressionsFileMissingErrorMessage, 2);
+			}
+		}
 
 		await this.initEslint([filePath]);
 

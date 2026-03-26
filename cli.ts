@@ -13,29 +13,32 @@ import type {LinterOptions, XoConfigOptions} from './lib/types.js';
 import {Xo} from './lib/xo.js';
 import openReport from './lib/open-report.js';
 
+const isErrorWithExitCode = (error: unknown): error is Error & {exitCode: number} => error instanceof Error && 'exitCode' in error && typeof error.exitCode === 'number';
+
 const cli = meow(
 	`
   Usage
     $ xo [<file|glob> ...]
 
   Options
-    --fix             Automagically fix issues
-    --fix-dry-run     Automagically fix issues without saving the changes to the file system
-    --reporter        Reporter to use
-    --space           Use space indent instead of tabs [Default: 2]
-    --config          Path to a XO configuration file
-    --semicolon       Use semicolons [Default: true]
-    --react           Include React specific parsing and xo-react linting rules [Default: false]
-    --prettier        Format with prettier or turn off Prettier-conflicted rules when set to 'compat' [Default: false]
-    --print-config    Print the effective ESLint config for the given file
-    --version         Print XO version
-    --open            Open files with issues in your editor
-    --quiet           Show only errors and no warnings
-    --max-warnings    Number of warnings to trigger nonzero exit code [Default: -1]
-    --stdin           Validate/fix code from stdin
-    --stdin-filename  Specify a filename for the --stdin option
-    --ignore          Ignore pattern globs, can be set multiple times
-    --cwd=<dir>       Working directory for files [Default: process.cwd()]
+    --fix                     Automagically fix issues
+    --fix-dry-run             Automagically fix issues without saving the changes to the file system
+    --reporter                Reporter to use
+    --space                   Use space indent instead of tabs [Default: 2]
+    --config                  Path to a XO configuration file
+    --semicolon               Use semicolons [Default: true]
+    --react                   Include React specific parsing and xo-react linting rules [Default: false]
+    --prettier                Format with prettier or turn off Prettier-conflicted rules when set to 'compat' [Default: false]
+    --print-config            Print the effective ESLint config for the given file
+    --version                 Print XO version
+    --open                    Open files with issues in your editor
+    --quiet                   Show only errors and no warnings
+    --max-warnings            Number of warnings to trigger nonzero exit code [Default: -1]
+    --stdin                   Validate/fix code from stdin
+    --stdin-filename          Specify a filename for the --stdin option
+    --ignore                  Ignore pattern globs, can be set multiple times
+    --suppressions-location   Path to a custom ESLint suppressions file
+    --cwd=<dir>               Working directory for files [Default: process.cwd()]
 
   Examples
     $ xo
@@ -105,6 +108,9 @@ const cli = meow(
 				isMultiple: true,
 				aliases: ['ignores'],
 			},
+			suppressionsLocation: {
+				type: 'string',
+			},
 			maxWarnings: {
 				type: 'number',
 				default: -1,
@@ -131,6 +137,7 @@ const linterOptions: LinterOptions = {
 	quiet: cliOptions.quiet,
 	ts: true,
 	configPath: cliOptions.configPath,
+	suppressionsLocation: cliOptions.suppressionsLocation,
 };
 
 // Make data types for `options.space` match those of the API
@@ -189,87 +196,96 @@ const log = async (report: {
 	}
 };
 
-if (cliOptions.version) {
-	showVersion();
-}
+try {
+	if (cliOptions.version) {
+		showVersion();
+	}
 
-if (cliOptions.stdin) {
-	const stdin = await getStdin();
+	if (cliOptions.stdin) {
+		const stdin = await getStdin();
 
-	let shouldRemoveStdInFile = false;
+		let shouldRemoveStdInFile = false;
 
-	// For TypeScript, we need a file on the filesystem to lint it or else @typescript-eslint will blow up.
-	// We create a temporary file in the node_modules/.cache/xo-linter directory to avoid conflicts with the user's files and lint that file as if it were the stdin input as a work around.
-	// We clean up the file after linting.
-	if (cliOptions.stdinFilename && tsExtensions.includes(path.extname(cliOptions.stdinFilename).slice(1))) {
-		const absoluteFilePath = path.resolve(cliOptions.cwd, cliOptions.stdinFilename);
-		if (!await pathExists(absoluteFilePath)) {
-			const cacheDir = findCacheDirectory({name: cacheDirName, cwd: linterOptions.cwd}) ?? path.join(cliOptions.cwd, 'node_modules', '.cache', cacheDirName);
-			cliOptions.stdinFilename = path.join(cacheDir, path.basename(absoluteFilePath));
-			shouldRemoveStdInFile = true;
-			baseXoConfigOptions.ignores = [
-				'!**/node_modules/**',
-				'!node_modules/**',
-				'!node_modules/',
-				`!${path.relative(cliOptions.cwd, cliOptions.stdinFilename)}`,
-			];
-			if (!await pathExists(path.dirname(cliOptions.stdinFilename))) {
-				await fs.mkdir(path.dirname(cliOptions.stdinFilename), {recursive: true});
+		// For TypeScript, we need a file on the filesystem to lint it or else @typescript-eslint will blow up.
+		// We create a temporary file in the node_modules/.cache/xo-linter directory to avoid conflicts with the user's files and lint that file as if it were the stdin input as a work around.
+		// We clean up the file after linting.
+		if (cliOptions.stdinFilename && tsExtensions.includes(path.extname(cliOptions.stdinFilename).slice(1))) {
+			const absoluteFilePath = path.resolve(cliOptions.cwd, cliOptions.stdinFilename);
+			if (!await pathExists(absoluteFilePath)) {
+				const cacheDir = findCacheDirectory({name: cacheDirName, cwd: linterOptions.cwd}) ?? path.join(cliOptions.cwd, 'node_modules', '.cache', cacheDirName);
+				cliOptions.stdinFilename = path.join(cacheDir, path.basename(absoluteFilePath));
+				shouldRemoveStdInFile = true;
+				baseXoConfigOptions.ignores = [
+					'!**/node_modules/**',
+					'!node_modules/**',
+					'!node_modules/',
+					`!${path.relative(cliOptions.cwd, cliOptions.stdinFilename)}`,
+				];
+				if (!await pathExists(path.dirname(cliOptions.stdinFilename))) {
+					await fs.mkdir(path.dirname(cliOptions.stdinFilename), {recursive: true});
+				}
+
+				await fs.writeFile(cliOptions.stdinFilename, stdin);
+			}
+		}
+
+		if (linterOptions.fix) {
+			const xo = new Xo(linterOptions, baseXoConfigOptions);
+			const {results: [result]} = await xo.lintText(stdin, {
+				filePath: cliOptions.stdinFilename,
+			});
+			process.stdout.write((result?.output) ?? stdin);
+			process.exit(0);
+		}
+
+		if (cliOptions.open) {
+			console.error('The `--open` flag is not supported on stdin');
+			if (shouldRemoveStdInFile) {
+				await fs.rm(cliOptions.stdinFilename);
 			}
 
-			await fs.writeFile(cliOptions.stdinFilename, stdin);
+			process.exit(1);
 		}
-	}
 
-	if (linterOptions.fix) {
 		const xo = new Xo(linterOptions, baseXoConfigOptions);
-		const {results: [result]} = await xo.lintText(stdin, {
-			filePath: cliOptions.stdinFilename,
-		});
-		process.stdout.write((result?.output) ?? stdin);
-		process.exit(0);
-	}
-
-	if (cliOptions.open) {
-		console.error('The `--open` flag is not supported on stdin');
+		await log(await xo.lintText(stdin, {filePath: cliOptions.stdinFilename, warnIgnored: false}));
 		if (shouldRemoveStdInFile) {
 			await fs.rm(cliOptions.stdinFilename);
 		}
 
-		process.exit(1);
+		process.exit(0);
 	}
 
-	const xo = new Xo(linterOptions, baseXoConfigOptions);
-	await log(await xo.lintText(stdin, {filePath: cliOptions.stdinFilename, warnIgnored: false}));
-	if (shouldRemoveStdInFile) {
-		await fs.rm(cliOptions.stdinFilename);
+	if (typeof cliOptions.printConfig === 'string') {
+		if (input.length > 0 || cliOptions.printConfig === '') {
+			console.error('The `--print-config` flag must be used with exactly one filename');
+			process.exit(1);
+		}
+
+		const absoluteFilePath = path.resolve(cliOptions.cwd, cliOptions.printConfig);
+
+		const config = await new Xo(linterOptions, baseXoConfigOptions).calculateConfigForFile(absoluteFilePath);
+		console.log(JSON.stringify(config, undefined, '\t'));
+	} else {
+		const xo = new Xo(linterOptions, baseXoConfigOptions);
+
+		const report = await xo.lintFiles(input);
+
+		if (cliOptions.fix) {
+			await Xo.outputFixes(report);
+		}
+
+		if (cliOptions.open) {
+			await openReport(report);
+		}
+
+		await log(report);
+	}
+} catch (error) {
+	if (isErrorWithExitCode(error)) {
+		console.error(error.message);
+		process.exit(error.exitCode);
 	}
 
-	process.exit(0);
-}
-
-if (typeof cliOptions.printConfig === 'string') {
-	if (input.length > 0 || cliOptions.printConfig === '') {
-		console.error('The `--print-config` flag must be used with exactly one filename');
-		process.exit(1);
-	}
-
-	const absoluteFilePath = path.resolve(cliOptions.cwd, cliOptions.printConfig);
-
-	const config = await new Xo(linterOptions, baseXoConfigOptions).calculateConfigForFile(absoluteFilePath);
-	console.log(JSON.stringify(config, undefined, '\t'));
-} else {
-	const xo = new Xo(linterOptions, baseXoConfigOptions);
-
-	const report = await xo.lintFiles(input);
-
-	if (cliOptions.fix) {
-		await Xo.outputFixes(report);
-	}
-
-	if (cliOptions.open) {
-		await openReport(report);
-	}
-
-	await log(report);
+	throw error;
 }

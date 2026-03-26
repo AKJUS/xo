@@ -706,3 +706,19 @@ test('vue > semicolon option applies to vue files', async t => {
 	const ruleIds = results[0]?.messages?.map(({ruleId}) => ruleId) ?? [];
 	t.true(ruleIds.includes('@stylistic/semi'));
 });
+
+test('suppressions > lintText respects suppressions file', async t => {
+	const filePath = path.join(t.context.cwd, 'test.js');
+	const suppressionsPath = path.join(t.context.cwd, 'eslint-suppressions.json');
+	await fs.writeFile(suppressionsPath, '{"test.js": {"@stylistic/semi": {"count": 1}}}', 'utf8');
+
+	const {results} = await new Xo({cwd: t.context.cwd, suppressionsLocation: 'eslint-suppressions.json'}).lintText('console.log(1)\n', {filePath});
+	t.is(results[0]?.messages.length, 0);
+});
+
+test('suppressions > lintText throws for missing custom suppressionsLocation', async t => {
+	const filePath = path.join(t.context.cwd, 'test.js');
+
+	const error = await t.throwsAsync(new Xo({cwd: t.context.cwd, suppressionsLocation: 'missing-suppressions.json'}).lintText('console.log(1)\n', {filePath}));
+	t.is(error?.message, 'The suppressions file does not exist. Please run the command with `--suppress-all` or `--suppress-rule` to create it.');
+});

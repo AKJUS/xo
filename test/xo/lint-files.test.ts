@@ -318,3 +318,58 @@ test('normalize cwd path casing', async t => {
 		await fs.rm(temporaryDirectory, {recursive: true, force: true});
 	}
 });
+
+test('suppressions > no suppression file, violations still reported', async t => {
+	const filePath = path.join(t.context.cwd, 'test.js');
+	await fs.writeFile(filePath, 'console.log(1)\n', 'utf8');
+
+	const {results} = await new Xo({cwd: t.context.cwd}).lintFiles('**/*');
+	const lintResult = results?.find(result => result.filePath === filePath);
+	t.is(lintResult?.messages.length, 1);
+	t.is(lintResult?.messages[0]?.ruleId, '@stylistic/semi');
+});
+
+test('suppressions > respects eslint-suppressions.json', async t => {
+	const filePath = path.join(t.context.cwd, 'test.js');
+	await fs.writeFile(filePath, 'console.log(1)\n', 'utf8');
+
+	const suppressionsPath = path.join(t.context.cwd, 'eslint-suppressions.json');
+	await fs.writeFile(suppressionsPath, '{"test.js": {"@stylistic/semi": {"count": 1}}}', 'utf8');
+
+	const {results} = await new Xo({cwd: t.context.cwd}).lintFiles('**/*');
+	const lintResult = results?.find(result => result.filePath === filePath);
+	t.is(lintResult?.messages.length, 0);
+});
+
+test('suppressions > custom suppressionsLocation', async t => {
+	const filePath = path.join(t.context.cwd, 'test.js');
+	await fs.writeFile(filePath, 'console.log(1)\n', 'utf8');
+
+	const suppressionsPath = path.join(t.context.cwd, 'custom-suppressions.json');
+	await fs.writeFile(suppressionsPath, '{"test.js": {"@stylistic/semi": {"count": 1}}}', 'utf8');
+
+	const {results} = await new Xo({cwd: t.context.cwd, suppressionsLocation: suppressionsPath}).lintFiles('**/*');
+	const lintResult = results?.find(result => result.filePath === filePath);
+	t.is(lintResult?.messages.length, 0);
+});
+
+test('suppressions > throws for missing custom suppressionsLocation', async t => {
+	const filePath = path.join(t.context.cwd, 'test.js');
+	const suppressionsPath = path.join(t.context.cwd, 'missing-suppressions.json');
+	await fs.writeFile(filePath, 'console.log(1)\n', 'utf8');
+
+	const error = await t.throwsAsync(new Xo({cwd: t.context.cwd, suppressionsLocation: suppressionsPath}).lintFiles('**/*'));
+	t.is(error?.message, 'The suppressions file does not exist. Please run the command with `--suppress-all` or `--suppress-rule` to create it.');
+});
+
+test('suppressions > relative suppressionsLocation path is resolved from cwd', async t => {
+	const filePath = path.join(t.context.cwd, 'test.js');
+	await fs.writeFile(filePath, 'console.log(1)\n', 'utf8');
+
+	const suppressionsPath = path.join(t.context.cwd, 'eslint-suppressions.json');
+	await fs.writeFile(suppressionsPath, '{"test.js": {"@stylistic/semi": {"count": 1}}}', 'utf8');
+
+	const {results} = await new Xo({cwd: t.context.cwd, suppressionsLocation: 'eslint-suppressions.json'}).lintFiles('**/*');
+	const lintResult = results?.find(result => result.filePath === filePath);
+	t.is(lintResult?.messages.length, 0);
+});

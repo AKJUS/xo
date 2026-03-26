@@ -68,6 +68,11 @@ export type LinterOptions = {
 	Custom path to config to use for the linter.
 	*/
 	configPath?: string;
+
+	/**
+	Path to the ESLint suppressions file. Defaults to `eslint-suppressions.json` in the working directory.
+	*/
+	suppressionsLocation?: string;
 };
 
 export type LintTextOptions = {

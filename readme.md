@@ -57,23 +57,24 @@ $ xo --help
 		$ xo [<file|glob> ...]
 
 	Options
-		--fix             Automagically fix issues
-		--fix-dry-run     Automagically fix issues without saving the changes to the file system
-		--reporter        Reporter to use
-		--space           Use space indent instead of tabs [Default: 2]
-		--config          Path to a XO configuration file
-		--semicolon       Use semicolons [Default: true]
-		--react           Include React specific parsing and xo-react linting rules [Default: false]
-		--prettier        Format with prettier or turn off prettier-conflicted rules when set to 'compat' [Default: false]
-		--print-config    Print the effective ESLint config for the given file
-		--version         Print XO version
-		--open            Open files with issues in your editor
-		--quiet           Show only errors and no warnings
-		--max-warnings    Number of warnings to trigger nonzero exit code [Default: -1]
-		--stdin           Validate/fix code from stdin
-		--stdin-filename  Specify a filename for the --stdin option
-		--ignore          Ignore pattern globs, can be set multiple times
-		--cwd=<dir>       Working directory for files [Default: process.cwd()]
+		--fix                     Automagically fix issues
+		--fix-dry-run             Automagically fix issues without saving the changes to the file system
+		--reporter                Reporter to use
+		--space                   Use space indent instead of tabs [Default: 2]
+		--config                  Path to a XO configuration file
+		--semicolon               Use semicolons [Default: true]
+		--react                   Include React specific parsing and xo-react linting rules [Default: false]
+		--prettier                Format with prettier or turn off Prettier-conflicted rules when set to 'compat' [Default: false]
+		--print-config            Print the effective ESLint config for the given file
+		--version                 Print XO version
+		--open                    Open files with issues in your editor
+		--quiet                   Show only errors and no warnings
+		--max-warnings            Number of warnings to trigger nonzero exit code [Default: -1]
+		--stdin                   Validate/fix code from stdin
+		--stdin-filename          Specify a filename for the --stdin option
+		--ignore                  Ignore pattern globs, can be set multiple times
+		--suppressions-location   Path to a custom ESLint suppressions file
+		--cwd=<dir>               Working directory for files [Default: process.cwd()]
 
 	Examples
 		$ xo
@@ -306,6 +307,24 @@ To include files that XO [ignores by default](lib/constants.ts), add them as neg
 const xoConfig = [{ignores: ['!vendor/**']}];
 
 export default xoConfig;
+```
+
+### Bulk suppression
+
+XO automatically respects an [`eslint-suppressions.json`](https://eslint.org/docs/latest/use/suppressions) file if one exists in the working directory. This lets you suppress existing violations while still enforcing rules on new code — useful for incrementally adopting stricter rules in a large codebase.
+
+To generate the suppressions file, create a temporary `eslint.config.js` using [`xoToEslintConfig`](#xotoeslintconfig) and run ESLint with `--suppress-all`:
+
+```sh
+npx eslint --suppress-all
+```
+
+Commit the resulting `eslint-suppressions.json` to share suppressions across your team.
+
+To use a custom suppressions file path, pass `--suppressions-location`:
+
+```sh
+xo --suppressions-location config/suppressions.json
 ```
 
 ## FAQ
