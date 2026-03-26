@@ -81,7 +81,7 @@
 		"find-cache-directory": "^6.0.0",
 		"get-stdin": "^10.0.0",
 		"get-tsconfig": "^4.13.6",
-		"globby": "^16.1.1",
+		"globby": "^16.2.0",
 		"jiti": "^2.2.0",
 		"meow": "^14.1.0",
 		"micromatch": "^4.0.8",

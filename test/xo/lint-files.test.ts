@@ -3,6 +3,7 @@ import {realpathSync} from 'node:fs';
 import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
+import process from 'node:process';
 import _test, {type TestFn} from 'ava'; // eslint-disable-line ava/use-test
 import dedent from 'dedent';
 import {Xo, ignoredFileWarningMessage, noFilesFoundErrorMessage} from '../../lib/xo.js';
@@ -372,4 +373,32 @@ test('suppressions > relative suppressionsLocation path is resolved from cwd', a
 	const {results} = await new Xo({cwd: t.context.cwd, suppressionsLocation: 'eslint-suppressions.json'}).lintFiles('**/*');
 	const lintResult = results?.find(result => result.filePath === filePath);
 	t.is(lintResult?.messages.length, 0);
+});
+
+test('respects core.excludesfile (global gitignore)', async t => {
+	const ignoredFilePath = path.join(t.context.cwd, 'globally-ignored.js');
+	const normalFilePath = path.join(t.context.cwd, 'normal.js');
+	await fs.writeFile(ignoredFilePath, 'console.log("hello")\n', 'utf8');
+	await fs.writeFile(normalFilePath, 'console.log("hello")\n', 'utf8');
+
+	const gitignorePath = path.join(t.context.cwd, '.global-gitignore');
+	await fs.writeFile(gitignorePath, 'globally-ignored.js\n', 'utf8');
+
+	const gitConfigPath = path.join(t.context.cwd, '.gitconfig');
+	await fs.writeFile(gitConfigPath, `[core]\n\texcludesfile = ${gitignorePath}\n`, 'utf8');
+
+	const previousValue = process.env['GIT_CONFIG_GLOBAL'];
+	process.env['GIT_CONFIG_GLOBAL'] = gitConfigPath;
+
+	try {
+		const {results} = await new Xo({cwd: t.context.cwd}).lintFiles('**/*.js');
+		t.false(results.some(r => r.filePath === ignoredFilePath), 'globally-ignored.js should be excluded from lint results');
+		t.true(results.some(r => r.filePath === normalFilePath), 'normal.js should still be linted');
+	} finally {
+		if (previousValue === undefined) {
+			delete process.env['GIT_CONFIG_GLOBAL'];
+		} else {
+			process.env['GIT_CONFIG_GLOBAL'] = previousValue;
+		}
+	}
 });

@@ -453,10 +453,10 @@ export class Xo {
 		const hasExplicitFilePaths = globs.some(glob => !isDynamicPattern(glob));
 
 		const files: string | string[] = await globby(globs, {
-			// Merge in command line ignores
 			ignore: [...defaultIgnores, ...arrify(this.baseXoConfig.ignores)],
 			onlyFiles: true,
 			gitignore: true,
+			globalGitignore: true,
 			absolute: true,
 			dot: true,
 			cwd: this.linterOptions.cwd,
